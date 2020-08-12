@@ -9,7 +9,7 @@ struct HeaderSubmission {
     // Remote chain block height
     uint64 height;
     // Submitter
-    address submitter;
+    address payable submitter;
     // Ethereum block number submission was made
     uint256 blockNumber;
     // If this block is not finalized
@@ -139,8 +139,30 @@ contract Tendermint_ORU {
     function proveFraud(bytes32 headerHash, bytes calldata proof) external {}
 
     /// @notice Finalize blocks, returning the bond to the submitter.
-    function finalizeBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {}
+    function finalizeBlocks(bytes32[] calldata headerHashes) external {
+        for (uint256 i = 0; i < headerHashes.length; i++) {
+            // Load submission from storage
+            HeaderSubmission memory headerSubmission = _headerSubmissions[headerHashes[i]];
+            // Block must not be finalized yet
+            require(headerSubmission.isNotFinalized);
+
+            // Timeout must be expired in order to finalize a block
+            require(block.number > SafeMath.add(headerSubmission.blockNumber, _fraudTimeout));
+
+            // Reset unnecessary fields (to refund some gas)
+            address payable submitter = headerSubmission.submitter;
+            delete headerSubmission.submitter;
+            delete headerSubmission.blockNumber;
+            delete headerSubmission.isNotFinalized;
+
+            // Write resets to storage
+            _headerSubmissions[headerHashes[i]] = headerSubmission;
+
+            // Return bond to submitter
+            submitter.transfer(_bondSize);
+        }
+    }
 
     /// @notice Prune orphaned blocks from a reversion.
-    function pruneBlocks(bytes32[] calldata heaaderHashes, HeaderSubmission[] calldata headerSubmissions) external {}
+    function pruneBlocks(bytes32[] calldata heaaderHashes) external {}
 }

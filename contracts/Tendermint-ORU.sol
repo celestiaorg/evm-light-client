@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.7.0 <8.0.0;
+pragma solidity >=0.6.0 <8.0.0;
 pragma experimental ABIEncoderV2;
+
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /// @notice Submission of remote chain block header.
 struct HeaderSubmission {
@@ -17,7 +19,7 @@ struct HeaderSubmission {
 struct Header {
     uint64 height;
     uint64 timestamp;
-    uint64 lastBlockID;
+    bytes32 lastBlockID;
     bytes32 lastCommitRoot;
     bytes32 consensusRoot;
     bytes32 stateCommitment;
@@ -74,13 +76,16 @@ contract Tendermint_ORU {
 
     /// @notice Hashes of submissions of remote chain's block headers.
     /// @dev header hash => header submission hash
-    mapping (bytes32 => bytes32) public _headerSubmissionHashes;
+    mapping(bytes32 => bytes32) public _headerSubmissionHashes;
+
+    /// @notice Hash of the tip block.
+    bytes32 public _tipHash;
 
     ////////////////////////////////////
     // Constructor
     ////////////////////////////////////
 
-    constructor(bytes32 genesisHash, uint256 bondSize) {
+    constructor(bytes32 genesisHash, uint256 bondSize) public {
         _genesisHash = genesisHash;
         _bondSize = bondSize;
     }
@@ -90,22 +95,50 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(BareBlock calldata bareBlock, HeaderSubmission calldata parent) external {
+    function submitBlock(
+        BareBlock calldata bareBlock,
+        HeaderSubmission calldata parentSubmission
+    ) external payable {
+        // Must send _bondSize ETH to submit a block
+        require(msg.value == _bondSize);
+        // Parent must be the tip
+        require(bareBlock.header.lastBlockID == _tipHash);
+        // Height must increment
+        bytes32 parentSubmissionHash = keccak256(abi.encode(parentSubmission));
+        require(
+            _headerSubmissionHashes[bareBlock.header.lastBlockID] ==
+                parentSubmissionHash
+        );
+        require(bareBlock.header.height == SafeMath.add(parentSubmission, 1));
 
+        // TODO serialize header
+        // TODO hash serialized header
+        bytes32 headerHash = bytes32(0);
+
+        _headerSubmissionHashes[headerHash] = keccak256(
+            abi.encode(
+                HeaderSubmission(
+                    bareBlock.header.height,
+                    msg.sender,
+                    block.number
+                )
+            )
+        );
+        _tipHash = headerHash;
     }
 
     /// @notice Prove a block was invalid, reverting it and orphaning its descendents.
-    function proveFraud(bytes32 headerHash, bytes calldata proof) external {
-
-    }
+    function proveFraud(bytes32 headerHash, bytes calldata proof) external {}
 
     /// @notice Finalize blocks, returning the bond to the submitter.
-    function finalizeBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {
-
-    }
+    function finalizeBlocks(
+        bytes32[] calldata headerHashes,
+        HeaderSubmission[] calldata headerSubmissions
+    ) external {}
 
     /// @notice Prune orphaned blocks from a reversion.
-    function pruneBlocks(bytes32[] calldata heaaderHashes, HeaderSubmission[] calldata headerSubmissions) external {
-
-    }
+    function pruneBlocks(
+        bytes32[] calldata heaaderHashes,
+        HeaderSubmission[] calldata headerSubmissions
+    ) external {}
 }

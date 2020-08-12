@@ -61,6 +61,12 @@ struct BareBlock {
 /// @title Optimistic rollup of a remote chain's Tendermint consensus.
 contract Tendermint_ORU {
     ////////////////////////////////////
+    // Events
+    ////////////////////////////////////
+
+    event BlockSubmitted(BareBlock bareBlock, bytes32 indexed headerHash);
+
+    ////////////////////////////////////
     // Immutable fields
     ////////////////////////////////////
 
@@ -69,6 +75,9 @@ contract Tendermint_ORU {
 
     /// @notice Bond size.
     uint256 public immutable _bondSize;
+
+    /// @notice Timeout for fraud proofs, in Ethereum blocks.
+    uint256 public immutable _fraudTimeout;
 
     ////////////////////////////////////
     // Mutable fields (storage)
@@ -85,9 +94,14 @@ contract Tendermint_ORU {
     // Constructor
     ////////////////////////////////////
 
-    constructor(bytes32 genesisHash, uint256 bondSize) public {
+    constructor(
+        bytes32 genesisHash,
+        uint256 bondSize,
+        uint256 fraudTimeout
+    ) public {
         _genesisHash = genesisHash;
         _bondSize = bondSize;
+        _fraudTimeout = fraudTimeout;
     }
 
     ////////////////////////////////////
@@ -107,13 +121,17 @@ contract Tendermint_ORU {
 
         // TODO serialize header
         bytes memory serializedHeader;
-        // TODO hash serialized header
+
+        // Hash serialized header
         bytes32 headerHash = keccak256(serializedHeader);
 
+        // Insert header as new tip
         _headerSubmissionHashes[headerHash] = keccak256(
             abi.encode(HeaderSubmission(bareBlock.header.height, msg.sender, block.number))
         );
         _tipHash = headerHash;
+
+        emit BlockSubmitted(bareBlock, headerHash);
     }
 
     /// @notice Prove a block was invalid, reverting it and orphaning its descendents.

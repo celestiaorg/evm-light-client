@@ -12,6 +12,8 @@ struct HeaderSubmission {
     address submitter;
     // Ethereum block number submission was made
     uint256 blockNumber;
+    // If this block is not finalized
+    bool isNotFinalized;
 }
 
 /// @notice Remote chain block header.
@@ -83,9 +85,9 @@ contract Tendermint_ORU {
     // Mutable fields (storage)
     ////////////////////////////////////
 
-    /// @notice Hashes of submissions of remote chain's block headers.
-    /// @dev header hash => header submission hash
-    mapping(bytes32 => bytes32) public _headerSubmissionHashes;
+    /// @notice Submissions of remote chain's block headers.
+    /// @dev header hash => header submission
+    mapping(bytes32 => HeaderSubmission) public _headerSubmissions;
 
     /// @notice Hash of the tip block.
     bytes32 public _tipHash;
@@ -109,14 +111,13 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(BareBlock calldata bareBlock, HeaderSubmission calldata parentSubmission) external payable {
+    function submitBlock(BareBlock calldata bareBlock) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Parent must be the tip
         require(bareBlock.header.lastBlockID == _tipHash);
         // Height must increment
-        bytes32 parentSubmissionHash = keccak256(abi.encode(parentSubmission));
-        require(_headerSubmissionHashes[bareBlock.header.lastBlockID] == parentSubmissionHash);
+        HeaderSubmission memory parentSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
         require(bareBlock.header.height == SafeMath.add(parentSubmission.height, 1));
 
         // TODO serialize header
@@ -126,9 +127,7 @@ contract Tendermint_ORU {
         bytes32 headerHash = keccak256(serializedHeader);
 
         // Insert header as new tip
-        _headerSubmissionHashes[headerHash] = keccak256(
-            abi.encode(HeaderSubmission(bareBlock.header.height, msg.sender, block.number))
-        );
+        _headerSubmissions[headerHash] = HeaderSubmission(bareBlock.header.height, msg.sender, block.number, true);
         _tipHash = headerHash;
 
         emit BlockSubmitted(bareBlock, headerHash);

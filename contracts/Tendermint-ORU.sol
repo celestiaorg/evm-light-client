@@ -95,34 +95,23 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(
-        BareBlock calldata bareBlock,
-        HeaderSubmission calldata parentSubmission
-    ) external payable {
+    function submitBlock(BareBlock calldata bareBlock, HeaderSubmission calldata parentSubmission) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Parent must be the tip
         require(bareBlock.header.lastBlockID == _tipHash);
         // Height must increment
         bytes32 parentSubmissionHash = keccak256(abi.encode(parentSubmission));
-        require(
-            _headerSubmissionHashes[bareBlock.header.lastBlockID] ==
-                parentSubmissionHash
-        );
-        require(bareBlock.header.height == SafeMath.add(parentSubmission, 1));
+        require(_headerSubmissionHashes[bareBlock.header.lastBlockID] == parentSubmissionHash);
+        require(bareBlock.header.height == SafeMath.add(parentSubmission.height, 1));
 
         // TODO serialize header
+        bytes memory serializedHeader;
         // TODO hash serialized header
-        bytes32 headerHash = bytes32(0);
+        bytes32 headerHash = keccak256(serializedHeader);
 
         _headerSubmissionHashes[headerHash] = keccak256(
-            abi.encode(
-                HeaderSubmission(
-                    bareBlock.header.height,
-                    msg.sender,
-                    block.number
-                )
-            )
+            abi.encode(HeaderSubmission(bareBlock.header.height, msg.sender, block.number))
         );
         _tipHash = headerHash;
     }
@@ -131,14 +120,8 @@ contract Tendermint_ORU {
     function proveFraud(bytes32 headerHash, bytes calldata proof) external {}
 
     /// @notice Finalize blocks, returning the bond to the submitter.
-    function finalizeBlocks(
-        bytes32[] calldata headerHashes,
-        HeaderSubmission[] calldata headerSubmissions
-    ) external {}
+    function finalizeBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {}
 
     /// @notice Prune orphaned blocks from a reversion.
-    function pruneBlocks(
-        bytes32[] calldata heaaderHashes,
-        HeaderSubmission[] calldata headerSubmissions
-    ) external {}
+    function pruneBlocks(bytes32[] calldata heaaderHashes, HeaderSubmission[] calldata headerSubmissions) external {}
 }

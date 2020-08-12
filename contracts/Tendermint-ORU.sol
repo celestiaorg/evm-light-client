@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 
 /// @notice Submission of remote chain block header.
 struct HeaderSubmission {
-    // Block header hash
-    bytes32 digest;
+    // Remote chain block height
+    uint64 height;
     // Submitter
     address submitter;
     // Ethereum block number submission was made
@@ -69,9 +69,9 @@ contract Tendermint_ORU {
     // Mutable fields (storage)
     ////////////////////////////////////
 
-    /// @notice Submissions of remote chain's block headers.
-    /// @dev block height => header submission
-    mapping (uint256 => HeaderSubmission) public _headerSubmissions;
+    /// @notice Hashes of submissions of remote chain's block headers.
+    /// @dev header hash => header submission hash
+    mapping (bytes32 => bytes32) public _headerSubmissionHashes;
 
     ////////////////////////////////////
     // Constructor
@@ -82,10 +82,26 @@ contract Tendermint_ORU {
     }
 
     ////////////////////////////////////
-    // Methods
+    // External functions
     ////////////////////////////////////
 
-    function submitBlock(BareBlock calldata bareBlock) public {
+    /// @notice Submit a new bare block, placing a bond.
+    function submitBlock(BareBlock calldata bareBlock, HeaderSubmission calldata parent) external {
+
+    }
+
+    /// @notice Prove a block was invalid, reverting it and orphaning its descendents.
+    function proveFraud(bytes32 headerHash, bytes calldata proof) external {
+
+    }
+
+    /// @notice Finalize blocks, returning the bond to the submitter.
+    function finalizeBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {
+
+    }
+
+    /// @notice Prune orphaned blocks from a reversion.
+    function pruneBlocks(bytes32[] calldata heaaderHashes, HeaderSubmission[] calldata headerSubmissions) external {
 
     }
 }

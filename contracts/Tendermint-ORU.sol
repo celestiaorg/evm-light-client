@@ -12,6 +12,8 @@ struct HeaderSubmission {
     address payable submitter;
     // Ethereum block number submission was made
     uint256 blockNumber;
+    // Previous block header hash
+    bytes32 prevHash;
     // If this block is not finalized
     bool isNotFinalized;
 }
@@ -114,11 +116,11 @@ contract Tendermint_ORU {
     function submitBlock(BareBlock calldata bareBlock) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
-        // Parent must be the tip
+        // Previous block header hash must be the tip
         require(bareBlock.header.lastBlockID == _tipHash);
         // Height must increment
-        HeaderSubmission memory parentSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
-        require(bareBlock.header.height == SafeMath.add(parentSubmission.height, 1));
+        HeaderSubmission memory prevSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
+        require(bareBlock.header.height == SafeMath.add(prevSubmission.height, 1));
 
         // TODO serialize and Merkleize commit
         // TODO check commit matches
@@ -129,7 +131,13 @@ contract Tendermint_ORU {
         bytes32 headerHash = keccak256(serializedHeader);
 
         // Insert header as new tip
-        _headerSubmissions[headerHash] = HeaderSubmission(bareBlock.header.height, msg.sender, block.number, true);
+        _headerSubmissions[headerHash] = HeaderSubmission(
+            bareBlock.header.height,
+            msg.sender,
+            block.number,
+            bareBlock.header.lastBlockID,
+            true
+        );
         _tipHash = headerHash;
 
         emit BlockSubmitted(bareBlock, headerHash);
@@ -153,6 +161,7 @@ contract Tendermint_ORU {
             address payable submitter = headerSubmission.submitter;
             delete headerSubmission.submitter;
             delete headerSubmission.blockNumber;
+            delete headerSubmission.prevHash;
             delete headerSubmission.isNotFinalized;
 
             // Write resets to storage
@@ -163,6 +172,29 @@ contract Tendermint_ORU {
         }
     }
 
-    /// @notice Prune orphaned blocks from a reversion.
-    function pruneBlocks(bytes32[] calldata heaaderHashes) external {}
+    /// @notice Prune blocks orphaned in a reversion.
+    function pruneBlocks(bytes32[] calldata headerHashes) external {
+        for (uint256 i = 0; i < headerHashes.length; i++) {
+            // Load submission from storage
+            HeaderSubmission memory headerSubmission = _headerSubmissions[headerHashes[i]];
+            // Block must not be finalized yet
+            require(headerSubmission.isNotFinalized);
+
+            // Previous block must be orphaned
+            require(_headerSubmissions[headerSubmission.prevHash].height == 0);
+
+            // Reset all fields (clearing height indicates orphaned block)
+            delete headerSubmission.height;
+            delete headerSubmission.submitter;
+            delete headerSubmission.blockNumber;
+            delete headerSubmission.prevHash;
+            delete headerSubmission.isNotFinalized;
+
+            // Write resets to storage
+            _headerSubmissions[headerHashes[i]] = headerSubmission;
+
+            // Return half of bond to pruner
+            msg.sender.transfer(SafeMath.div(_bondSize, 2));
+        }
+    }
 }

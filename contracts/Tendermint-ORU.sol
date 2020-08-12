@@ -160,7 +160,7 @@ contract Tendermint_ORU {
         // Write resets to storage
         _headerSubmissions[headerHash] = headerSubmission;
 
-        // Return half of bond to pruner
+        // Return half of bond to prover
         msg.sender.transfer(SafeMath.div(_bondSize, 2));
     }
 

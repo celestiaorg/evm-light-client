@@ -65,6 +65,9 @@ contract Tendermint_ORU {
     /// @notice Remote chain's genesis hash.
     bytes32 public immutable _genesisHash;
 
+    /// @notice Bond size.
+    uint256 public immutable _bondSize;
+
     ////////////////////////////////////
     // Mutable fields (storage)
     ////////////////////////////////////
@@ -77,8 +80,9 @@ contract Tendermint_ORU {
     // Constructor
     ////////////////////////////////////
 
-    constructor(bytes32 genesisHash) {
+    constructor(bytes32 genesisHash, uint256 bondSize) {
         _genesisHash = genesisHash;
+        _bondSize = bondSize;
     }
 
     ////////////////////////////////////

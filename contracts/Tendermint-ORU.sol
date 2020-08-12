@@ -144,7 +144,25 @@ contract Tendermint_ORU {
     }
 
     /// @notice Prove a block was invalid, reverting it and orphaning its descendents.
-    function proveFraud(bytes32 headerHash, bytes calldata proof) external {}
+    function proveFraud(bytes32 headerHash, bytes calldata proof) external {
+        // Load submission from storage
+        HeaderSubmission memory headerSubmission = _headerSubmissions[headerHash];
+
+        // TODO verify proof
+
+        // Reset all fields (clearing height indicates orphaned block)
+        delete headerSubmission.height;
+        delete headerSubmission.submitter;
+        delete headerSubmission.blockNumber;
+        delete headerSubmission.prevHash;
+        delete headerSubmission.isNotFinalized;
+
+        // Write resets to storage
+        _headerSubmissions[headerHash] = headerSubmission;
+
+        // Return half of bond to pruner
+        msg.sender.transfer(SafeMath.div(_bondSize, 2));
+    }
 
     /// @notice Finalize blocks, returning the bond to the submitter.
     function finalizeBlocks(bytes32[] calldata headerHashes) external {

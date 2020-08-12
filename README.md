@@ -19,5 +19,5 @@ truffle compile
 Test:
 
 ```sh
-TODO
+truffle test
 ```

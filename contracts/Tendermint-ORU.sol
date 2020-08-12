@@ -120,9 +120,11 @@ contract Tendermint_ORU {
         HeaderSubmission memory parentSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
         require(bareBlock.header.height == SafeMath.add(parentSubmission.height, 1));
 
+        // TODO serialize and Merkleize commit
+        // TODO check commit matches
+
         // TODO serialize header
         bytes memory serializedHeader;
-
         // Hash serialized header
         bytes32 headerHash = keccak256(serializedHeader);
 

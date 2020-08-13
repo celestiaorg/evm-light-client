@@ -14,8 +14,10 @@ struct HeaderSubmission {
     uint256 blockNumber;
     // Previous block header hash
     bytes32 prevHash;
-    // Simple hash of commit in ABI encoded format
-    bytes32 commitHash;
+    // Simple hash of previous block's commit in ABI encoded format
+    bytes32 lastCommitHash;
+    // Merkle root of previous block's commit in canonical serialization format
+    bytes32 lastCommitRoot;
     // If this block is not finalized
     bool isNotFinalized;
 }
@@ -61,7 +63,7 @@ struct Commit {
 /// @notice Bare minimim block data. Only contains the block header and commit.
 struct BareBlock {
     Header header;
-    Commit commit;
+    Commit lastCommit;
 }
 
 /// @title Optimistic rollup of a remote chain's Tendermint consensus.
@@ -129,8 +131,8 @@ contract Tendermint_ORU {
         HeaderSubmission memory prevSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
         require(bareBlock.header.height == SafeMath.add(prevSubmission.height, 1));
 
-        // Take simple hash of commit
-        bytes32 commitHash = keccak256(abi.encode(bareBlock.commit));
+        // Take simple hash of commit for previous block
+        bytes32 lastCommitHash = keccak256(abi.encode(bareBlock.lastCommit));
 
         // TODO serialize header
         bytes memory serializedHeader;
@@ -144,7 +146,8 @@ contract Tendermint_ORU {
             msg.sender,
             block.number,
             bareBlock.header.lastBlockID,
-            commitHash,
+            lastCommitHash,
+            bareBlock.header.lastCommitRoot,
             true
         );
         _headerSubmissions[headerHash] = headerSubmission;
@@ -185,7 +188,8 @@ contract Tendermint_ORU {
             delete _headerSubmissions[headerHash].submitter;
             delete _headerSubmissions[headerHash].blockNumber;
             delete _headerSubmissions[headerHash].prevHash;
-            delete _headerSubmissions[headerHash].commitHash;
+            delete _headerSubmissions[headerHash].lastCommitHash;
+            delete _headerSubmissions[headerHash].lastCommitRoot;
             delete _headerSubmissions[headerHash].isNotFinalized;
 
             // Return bond to submitter

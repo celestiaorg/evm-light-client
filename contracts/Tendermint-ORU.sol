@@ -113,6 +113,8 @@ contract Tendermint_ORU {
         _genesisHash = genesisHash;
         _bondSize = bondSize;
         _fraudTimeout = fraudTimeout;
+
+        // TODO process genesis block
     }
 
     ////////////////////////////////////
@@ -128,6 +130,8 @@ contract Tendermint_ORU {
         // Height must increment
         require(keccak256(abi.encode(prevSubmission)) == _headerSubmissionHashes[bareBlock.header.lastBlockID]);
         require(bareBlock.header.height == SafeMath.add(prevSubmission.header.height, 1));
+
+        // TODO bug: prev submission is cleared when finalized, need to account for this
 
         // Take simple hash of commit for previous block
         bytes32 lastCommitHash = keccak256(abi.encode(bareBlock.lastCommit));

@@ -90,9 +90,9 @@ contract Tendermint_ORU {
     // Mutable fields (storage)
     ////////////////////////////////////
 
-    /// @notice Submissions of remote chain's block headers.
-    /// @dev header hash => header submission
-    mapping(bytes32 => HeaderSubmission) public _headerSubmissions;
+    /// @notice Hashes of submissions of remote chain's block headers. Once finalized, this is re-interpreted as a height.
+    /// @dev header hash => header submission hash (height)
+    mapping(bytes32 => bytes32) public _headerSubmissionHashes;
 
     /// @notice If a block is not finalized.
     /// @dev header hash => is not finalized
@@ -120,13 +120,13 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(BareBlock calldata bareBlock) external payable {
+    function submitBlock(BareBlock calldata bareBlock, HeaderSubmission calldata prevSubmission) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Previous block header hash must be the tip
         require(bareBlock.header.lastBlockID == _tipHash);
         // Height must increment
-        HeaderSubmission memory prevSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
+        require(keccak256(abi.encode(prevSubmission)) == _headerSubmissionHashes[bareBlock.header.lastBlockID]);
         require(bareBlock.header.height == SafeMath.add(prevSubmission.header.height, 1));
 
         // Take simple hash of commit for previous block
@@ -145,7 +145,7 @@ contract Tendermint_ORU {
             block.number,
             lastCommitHash
         );
-        _headerSubmissions[headerHash] = headerSubmission;
+        _headerSubmissionHashes[headerHash] = keccak256(abi.encode(headerSubmission));
         _isNotFinalized[headerHash] = true;
         _tipHash = headerHash;
 
@@ -153,21 +153,27 @@ contract Tendermint_ORU {
     }
 
     /// @notice Prove a block was invalid, reverting it and orphaning its descendents.
-    function proveFraud(bytes32 headerHash, bytes calldata proof) external {
-        // Load submission from storage
-        HeaderSubmission memory headerSubmission = _headerSubmissions[headerHash];
+    function proveFraud(
+        bytes32 headerHash,
+        HeaderSubmission calldata headerSubmission,
+        HeaderSubmission calldata tipSubmission,
+        bytes calldata proof
+    ) external {
+        // Check submission against storage
+        require(keccak256(abi.encode(headerSubmission)) == _headerSubmissionHashes[headerHash]);
         // Block must not be finalized yet
         require(_isNotFinalized[headerHash]);
 
         // Block must be at most the same height as the tip
         // Note: orphaned blocks be pruned before submitting new blocks since
         // this check does not account for forks.
-        require(headerSubmission.header.height <= _headerSubmissions[_tipHash].header.height);
+        require(keccak256(abi.encode(tipSubmission)) == _headerSubmissionHashes[_tipHash]);
+        require(headerSubmission.header.height <= tipSubmission.header.height);
 
         // TODO verify proof
 
         // Reset storage
-        delete _headerSubmissions[headerHash];
+        delete _headerSubmissionHashes[headerHash];
         delete _isNotFinalized[headerHash];
         // Roll back the tip
         _tipHash = headerSubmission.header.lastBlockID;
@@ -177,21 +183,21 @@ contract Tendermint_ORU {
     }
 
     /// @notice Finalize blocks, returning the bond to the submitter.
-    function finalizeBlocks(bytes32[] calldata headerHashes) external {
+    function finalizeBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {
         for (uint256 i = 0; i < headerHashes.length; i++) {
             bytes32 headerHash = headerHashes[i];
-            // Load submission from storage
-            HeaderSubmission memory headerSubmission = _headerSubmissions[headerHash];
+            HeaderSubmission memory headerSubmission = headerSubmissions[i];
+            // Check submission against storage
+            require(keccak256(abi.encode(headerSubmission)) == _headerSubmissionHashes[headerHash]);
             // Block must not be finalized yet
             require(_isNotFinalized[headerHash]);
 
             // Timeout must be expired in order to finalize a block
             require(block.number > SafeMath.add(headerSubmission.blockNumber, _fraudTimeout));
 
-            // Reset unnecessary fields (to refund some gas)
-            delete _headerSubmissions[headerHash].submitter;
-            delete _headerSubmissions[headerHash].blockNumber;
-            delete _headerSubmissions[headerHash].lastCommitHash;
+            // Re-interpret value as height
+            _headerSubmissionHashes[headerHash] = bytes32(uint256(headerSubmission.header.height));
+            // Reset storage
             delete _isNotFinalized[headerHash];
 
             // Return bond to submitter
@@ -201,19 +207,21 @@ contract Tendermint_ORU {
 
     /// @notice Prune blocks orphaned in a reversion.
     /// @dev Orphaned blocks must be pruned before submitting new blocks.
-    function pruneBlocks(bytes32[] calldata headerHashes) external {
+    function pruneBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {
         for (uint256 i = 0; i < headerHashes.length; i++) {
-            // Load submission from storage
-            HeaderSubmission memory headerSubmission = _headerSubmissions[headerHashes[i]];
+            bytes32 headerHash = headerHashes[i];
+            HeaderSubmission memory headerSubmission = headerSubmissions[i];
+            // Check submission against storage
+            require(keccak256(abi.encode(headerSubmission)) == _headerSubmissionHashes[headerHash]);
             // Block must not be finalized yet
-            require(_isNotFinalized[headerHashes[i]]);
+            require(_isNotFinalized[headerHash]);
 
             // Previous block must be orphaned
-            require(_headerSubmissions[headerSubmission.header.lastBlockID].header.height == 0);
+            require(_headerSubmissionHashes[headerSubmission.header.lastBlockID] == 0);
 
             // Reset storage
-            delete _headerSubmissions[headerHashes[i]];
-            delete _isNotFinalized[headerHashes[i]];
+            delete _headerSubmissionHashes[headerHash];
+            delete _isNotFinalized[headerHash];
 
             // Return half of bond to pruner
             msg.sender.transfer(SafeMath.div(_bondSize, 2));

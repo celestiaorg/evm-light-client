@@ -68,7 +68,12 @@ contract Tendermint_ORU {
     // Events
     ////////////////////////////////////
 
-    event BlockSubmitted(BareBlock bareBlock, bytes32 indexed headerHash);
+    event BlockSubmitted(
+        BareBlock bareBlock,
+        bytes32 indexed headerHash,
+        uint256 indexed height,
+        HeaderSubmission headerSubmission
+    );
 
     ////////////////////////////////////
     // Immutable fields
@@ -131,22 +136,25 @@ contract Tendermint_ORU {
         bytes32 headerHash = keccak256(serializedHeader);
 
         // Insert header as new tip
-        _headerSubmissions[headerHash] = HeaderSubmission(
+        HeaderSubmission memory headerSubmission = HeaderSubmission(
             bareBlock.header.height,
             msg.sender,
             block.number,
             bareBlock.header.lastBlockID,
             true
         );
+        _headerSubmissions[headerHash] = headerSubmission;
         _tipHash = headerHash;
 
-        emit BlockSubmitted(bareBlock, headerHash);
+        emit BlockSubmitted(bareBlock, headerHash, bareBlock.header.height, headerSubmission);
     }
 
     /// @notice Prove a block was invalid, reverting it and orphaning its descendents.
     function proveFraud(bytes32 headerHash, bytes calldata proof) external {
         // Load submission from storage
         HeaderSubmission memory headerSubmission = _headerSubmissions[headerHash];
+        // Block must not be finalized yet
+        require(headerSubmission.isNotFinalized);
 
         // TODO verify proof
 

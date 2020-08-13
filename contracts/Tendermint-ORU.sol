@@ -13,7 +13,7 @@ struct HeaderSubmission {
     // Ethereum block number submission was made
     uint256 blockNumber;
     // Previous block header hash
-    bytes32 prevHash;
+    bytes32 lastBlockID;
     // Simple hash of previous block's commit in ABI encoded format
     bytes32 lastCommitHash;
     // Merkle root of previous block's commit in canonical serialization format
@@ -187,7 +187,7 @@ contract Tendermint_ORU {
             // Reset unnecessary fields (to refund some gas)
             delete _headerSubmissions[headerHash].submitter;
             delete _headerSubmissions[headerHash].blockNumber;
-            delete _headerSubmissions[headerHash].prevHash;
+            delete _headerSubmissions[headerHash].lastBlockID;
             delete _headerSubmissions[headerHash].lastCommitHash;
             delete _headerSubmissions[headerHash].lastCommitRoot;
             delete _headerSubmissions[headerHash].isNotFinalized;
@@ -206,7 +206,7 @@ contract Tendermint_ORU {
             require(headerSubmission.isNotFinalized);
 
             // Previous block must be orphaned
-            require(_headerSubmissions[headerSubmission.prevHash].height == 0);
+            require(_headerSubmissions[headerSubmission.lastBlockID].height == 0);
 
             // Reset storage
             delete _headerSubmissions[headerHashes[i]];

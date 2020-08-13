@@ -80,6 +80,9 @@ contract Tendermint_ORU {
     /// @notice Remote chain's genesis hash.
     bytes32 public immutable _genesisHash;
 
+    /// @notice Genesis submission hash.
+    bytes32 public immutable _genesisSubmissionHash;
+
     /// @notice Bond size.
     uint256 public immutable _bondSize;
 
@@ -111,14 +114,20 @@ contract Tendermint_ORU {
 
     constructor(
         bytes32 genesisHash,
+        bytes32 genesisSubmissionHash,
         uint256 bondSize,
         uint256 fraudTimeout
     ) public {
         _genesisHash = genesisHash;
+        _genesisSubmissionHash = genesisSubmissionHash;
         _bondSize = bondSize;
         _fraudTimeout = fraudTimeout;
 
-        // TODO process genesis block
+        // The genesis block is already finalized implicitly, so we simply set the height to 1
+        _headerHeights[genesisSubmissionHash] = 1;
+
+        // Set the tip hash
+        _tipHash = genesisHash;
     }
 
     ////////////////////////////////////

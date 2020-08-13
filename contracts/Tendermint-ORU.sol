@@ -159,11 +159,18 @@ contract Tendermint_ORU {
         // Block must not be finalized yet
         require(_isNotFinalized[headerHash]);
 
+        // Block must be at most the same height as the tip
+        // Note: orphaned blocks be pruned before submitting new blocks since
+        // this check does not account for forks.
+        require(headerSubmission.header.height <= _headerSubmissions[_tipHash].header.height);
+
         // TODO verify proof
 
         // Reset storage
         delete _headerSubmissions[headerHash];
         delete _isNotFinalized[headerHash];
+        // Roll back the tip
+        _tipHash = headerSubmission.header.lastBlockID;
 
         // Return half of bond to prover
         msg.sender.transfer(SafeMath.div(_bondSize, 2));
@@ -193,6 +200,7 @@ contract Tendermint_ORU {
     }
 
     /// @notice Prune blocks orphaned in a reversion.
+    /// @dev Orphaned blocks must be pruned before submitting new blocks.
     function pruneBlocks(bytes32[] calldata headerHashes) external {
         for (uint256 i = 0; i < headerHashes.length; i++) {
             // Load submission from storage

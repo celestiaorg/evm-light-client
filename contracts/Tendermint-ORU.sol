@@ -150,15 +150,8 @@ contract Tendermint_ORU {
 
         // TODO verify proof
 
-        // Reset all fields (clearing height indicates orphaned block)
-        delete headerSubmission.height;
-        delete headerSubmission.submitter;
-        delete headerSubmission.blockNumber;
-        delete headerSubmission.prevHash;
-        delete headerSubmission.isNotFinalized;
-
-        // Write resets to storage
-        _headerSubmissions[headerHash] = headerSubmission;
+        // Reset storage
+        delete _headerSubmissions[headerHash];
 
         // Return half of bond to prover
         msg.sender.transfer(SafeMath.div(_bondSize, 2));
@@ -201,15 +194,8 @@ contract Tendermint_ORU {
             // Previous block must be orphaned
             require(_headerSubmissions[headerSubmission.prevHash].height == 0);
 
-            // Reset all fields (clearing height indicates orphaned block)
-            delete headerSubmission.height;
-            delete headerSubmission.submitter;
-            delete headerSubmission.blockNumber;
-            delete headerSubmission.prevHash;
-            delete headerSubmission.isNotFinalized;
-
-            // Write resets to storage
-            _headerSubmissions[headerHashes[i]] = headerSubmission;
+            // Reset storage
+            delete _headerSubmissions[headerHashes[i]];
 
             // Return half of bond to pruner
             msg.sender.transfer(SafeMath.div(_bondSize, 2));

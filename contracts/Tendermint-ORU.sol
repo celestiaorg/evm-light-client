@@ -6,20 +6,14 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /// @notice Submission of remote chain block header.
 struct HeaderSubmission {
-    // Remote chain block height
-    uint64 height;
+    // Block header
+    Header header;
     // Submitter
     address payable submitter;
     // Ethereum block number submission was made
     uint256 blockNumber;
-    // Previous block header hash
-    bytes32 lastBlockID;
     // Simple hash of previous block's commit in ABI encoded format
     bytes32 lastCommitHash;
-    // Merkle root of previous block's commit in canonical serialization format
-    bytes32 lastCommitRoot;
-    // If this block is not finalized
-    bool isNotFinalized;
 }
 
 /// @notice Remote chain block header.
@@ -100,7 +94,11 @@ contract Tendermint_ORU {
     /// @dev header hash => header submission
     mapping(bytes32 => HeaderSubmission) public _headerSubmissions;
 
-    /// @notice Hash of the tip block.
+    /// @notice If a block is not finalized.
+    /// @dev header hash => is not finalized
+    mapping(bytes32 => bool) public _isNotFinalized;
+
+    /// @notice Header hash of the tip block.
     bytes32 public _tipHash;
 
     ////////////////////////////////////
@@ -129,7 +127,7 @@ contract Tendermint_ORU {
         require(bareBlock.header.lastBlockID == _tipHash);
         // Height must increment
         HeaderSubmission memory prevSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
-        require(bareBlock.header.height == SafeMath.add(prevSubmission.height, 1));
+        require(bareBlock.header.height == SafeMath.add(prevSubmission.header.height, 1));
 
         // Take simple hash of commit for previous block
         bytes32 lastCommitHash = keccak256(abi.encode(bareBlock.lastCommit));
@@ -142,15 +140,13 @@ contract Tendermint_ORU {
 
         // Insert header as new tip
         HeaderSubmission memory headerSubmission = HeaderSubmission(
-            bareBlock.header.height,
+            bareBlock.header,
             msg.sender,
             block.number,
-            bareBlock.header.lastBlockID,
-            lastCommitHash,
-            bareBlock.header.lastCommitRoot,
-            true
+            lastCommitHash
         );
         _headerSubmissions[headerHash] = headerSubmission;
+        _isNotFinalized[headerHash] = true;
         _tipHash = headerHash;
 
         emit BlockSubmitted(bareBlock, headerHash, bareBlock.header.height, headerSubmission);
@@ -161,12 +157,13 @@ contract Tendermint_ORU {
         // Load submission from storage
         HeaderSubmission memory headerSubmission = _headerSubmissions[headerHash];
         // Block must not be finalized yet
-        require(headerSubmission.isNotFinalized);
+        require(_isNotFinalized[headerHash]);
 
         // TODO verify proof
 
         // Reset storage
         delete _headerSubmissions[headerHash];
+        delete _isNotFinalized[headerHash];
 
         // Return half of bond to prover
         msg.sender.transfer(SafeMath.div(_bondSize, 2));
@@ -179,7 +176,7 @@ contract Tendermint_ORU {
             // Load submission from storage
             HeaderSubmission memory headerSubmission = _headerSubmissions[headerHash];
             // Block must not be finalized yet
-            require(headerSubmission.isNotFinalized);
+            require(_isNotFinalized[headerHash]);
 
             // Timeout must be expired in order to finalize a block
             require(block.number > SafeMath.add(headerSubmission.blockNumber, _fraudTimeout));
@@ -187,10 +184,8 @@ contract Tendermint_ORU {
             // Reset unnecessary fields (to refund some gas)
             delete _headerSubmissions[headerHash].submitter;
             delete _headerSubmissions[headerHash].blockNumber;
-            delete _headerSubmissions[headerHash].lastBlockID;
             delete _headerSubmissions[headerHash].lastCommitHash;
-            delete _headerSubmissions[headerHash].lastCommitRoot;
-            delete _headerSubmissions[headerHash].isNotFinalized;
+            delete _isNotFinalized[headerHash];
 
             // Return bond to submitter
             headerSubmission.submitter.transfer(_bondSize);
@@ -203,13 +198,14 @@ contract Tendermint_ORU {
             // Load submission from storage
             HeaderSubmission memory headerSubmission = _headerSubmissions[headerHashes[i]];
             // Block must not be finalized yet
-            require(headerSubmission.isNotFinalized);
+            require(_isNotFinalized[headerHashes[i]]);
 
             // Previous block must be orphaned
-            require(_headerSubmissions[headerSubmission.lastBlockID].height == 0);
+            require(_headerSubmissions[headerSubmission.header.lastBlockID].header.height == 0);
 
             // Reset storage
             delete _headerSubmissions[headerHashes[i]];
+            delete _isNotFinalized[headerHashes[i]];
 
             // Return half of bond to pruner
             msg.sender.transfer(SafeMath.div(_bondSize, 2));

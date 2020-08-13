@@ -157,7 +157,7 @@ contract Tendermint_ORU {
         bytes32 headerHash,
         HeaderSubmission calldata headerSubmission,
         HeaderSubmission calldata tipSubmission,
-        bytes calldata proof
+        Commit calldata commit
     ) external {
         // Check submission against storage
         require(keccak256(abi.encode(headerSubmission)) == _headerSubmissionHashes[headerHash]);
@@ -170,7 +170,9 @@ contract Tendermint_ORU {
         require(keccak256(abi.encode(tipSubmission)) == _headerSubmissionHashes[_tipHash]);
         require(headerSubmission.header.height <= tipSubmission.header.height);
 
-        // TODO verify proof
+        // TODO serialize and Merkleize commit
+        // TODO compare root against stored root
+        // TODO process commit, check at least 2/3 of voting power
 
         // Reset storage
         delete _headerSubmissionHashes[headerHash];

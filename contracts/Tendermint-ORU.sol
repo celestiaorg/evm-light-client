@@ -90,9 +90,13 @@ contract Tendermint_ORU {
     // Mutable fields (storage)
     ////////////////////////////////////
 
-    /// @notice Hashes of submissions of remote chain's block headers. Once finalized, this is re-interpreted as a height.
-    /// @dev header hash => header submission hash (height)
+    /// @notice Hashes of submissions of remote chain's block headers.
+    /// @dev header hash => header submission hash
     mapping(bytes32 => bytes32) public _headerSubmissionHashes;
+
+    /// @notice Height of submissions.
+    /// @dev header submission hash => height
+    mapping(bytes32 => uint64) public _headerHeights;
 
     /// @notice If a block is not finalized.
     /// @dev header hash => is not finalized
@@ -122,16 +126,15 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(BareBlock calldata bareBlock, HeaderSubmission calldata prevSubmission) external payable {
+    function submitBlock(BareBlock calldata bareBlock, bytes32 prevSubmissionHash) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Previous block header hash must be the tip
         require(bareBlock.header.lastBlockID == _tipHash);
         // Height must increment
-        require(keccak256(abi.encode(prevSubmission)) == _headerSubmissionHashes[bareBlock.header.lastBlockID]);
-        require(bareBlock.header.height == SafeMath.add(prevSubmission.header.height, 1));
-
-        // TODO bug: prev submission is cleared when finalized, need to account for this
+        // Note: orphaned blocks be pruned before submitting new blocks since
+        // this check does not account for forks.
+        require(bareBlock.header.height == SafeMath.add(_headerHeights[prevSubmissionHash], 1));
 
         // Take simple hash of commit for previous block
         bytes32 lastCommitHash = keccak256(abi.encode(bareBlock.lastCommit));
@@ -149,7 +152,9 @@ contract Tendermint_ORU {
             block.number,
             lastCommitHash
         );
-        _headerSubmissionHashes[headerHash] = keccak256(abi.encode(headerSubmission));
+        bytes32 headerSubmissionHash = keccak256(abi.encode(headerSubmission));
+        _headerSubmissionHashes[headerHash] = headerSubmissionHash;
+        _headerHeights[headerSubmissionHash] = bareBlock.header.height;
         _isNotFinalized[headerHash] = true;
         _tipHash = headerHash;
 
@@ -164,7 +169,8 @@ contract Tendermint_ORU {
         Commit calldata commit
     ) external {
         // Check submission against storage
-        require(keccak256(abi.encode(headerSubmission)) == _headerSubmissionHashes[headerHash]);
+        bytes32 headerSubmissionHash = keccak256(abi.encode(headerSubmission));
+        require(headerSubmissionHash == _headerSubmissionHashes[headerHash]);
         // Block must not be finalized yet
         require(_isNotFinalized[headerHash]);
 
@@ -180,6 +186,7 @@ contract Tendermint_ORU {
 
         // Reset storage
         delete _headerSubmissionHashes[headerHash];
+        delete _headerHeights[headerSubmissionHash];
         delete _isNotFinalized[headerHash];
         // Roll back the tip
         _tipHash = headerSubmission.header.lastBlockID;
@@ -194,16 +201,16 @@ contract Tendermint_ORU {
             bytes32 headerHash = headerHashes[i];
             HeaderSubmission memory headerSubmission = headerSubmissions[i];
             // Check submission against storage
-            require(keccak256(abi.encode(headerSubmission)) == _headerSubmissionHashes[headerHash]);
+            bytes32 headerSubmissionHash = keccak256(abi.encode(headerSubmission));
+            require(headerSubmissionHash == _headerSubmissionHashes[headerHash]);
             // Block must not be finalized yet
             require(_isNotFinalized[headerHash]);
 
             // Timeout must be expired in order to finalize a block
             require(block.number > SafeMath.add(headerSubmission.blockNumber, _fraudTimeout));
 
-            // Re-interpret value as height
-            _headerSubmissionHashes[headerHash] = bytes32(uint256(headerSubmission.header.height));
-            // Reset storage
+            // Reset storage (height is kept!)
+            delete _headerSubmissionHashes[headerHash];
             delete _isNotFinalized[headerHash];
 
             // Return bond to submitter
@@ -218,7 +225,8 @@ contract Tendermint_ORU {
             bytes32 headerHash = headerHashes[i];
             HeaderSubmission memory headerSubmission = headerSubmissions[i];
             // Check submission against storage
-            require(keccak256(abi.encode(headerSubmission)) == _headerSubmissionHashes[headerHash]);
+            bytes32 headerSubmissionHash = keccak256(abi.encode(headerSubmission));
+            require(headerSubmissionHash == _headerSubmissionHashes[headerHash]);
             // Block must not be finalized yet
             require(_isNotFinalized[headerHash]);
 
@@ -227,6 +235,7 @@ contract Tendermint_ORU {
 
             // Reset storage
             delete _headerSubmissionHashes[headerHash];
+            delete _headerHeights[headerSubmissionHash];
             delete _isNotFinalized[headerHash];
 
             // Return half of bond to pruner

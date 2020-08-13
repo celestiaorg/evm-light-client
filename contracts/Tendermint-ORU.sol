@@ -14,6 +14,8 @@ struct HeaderSubmission {
     uint256 blockNumber;
     // Previous block header hash
     bytes32 prevHash;
+    // Simple hash of commit in ABI encoded format
+    bytes32 commitHash;
     // If this block is not finalized
     bool isNotFinalized;
 }
@@ -127,11 +129,12 @@ contract Tendermint_ORU {
         HeaderSubmission memory prevSubmission = _headerSubmissions[bareBlock.header.lastBlockID];
         require(bareBlock.header.height == SafeMath.add(prevSubmission.height, 1));
 
-        // TODO serialize and Merkleize commit
-        // TODO check commit matches
+        // Take simple hash of commit
+        bytes32 commitHash = keccak256(abi.encode(bareBlock.commit));
 
         // TODO serialize header
         bytes memory serializedHeader;
+
         // Hash serialized header
         bytes32 headerHash = keccak256(serializedHeader);
 
@@ -141,6 +144,7 @@ contract Tendermint_ORU {
             msg.sender,
             block.number,
             bareBlock.header.lastBlockID,
+            commitHash,
             true
         );
         _headerSubmissions[headerHash] = headerSubmission;
@@ -168,8 +172,9 @@ contract Tendermint_ORU {
     /// @notice Finalize blocks, returning the bond to the submitter.
     function finalizeBlocks(bytes32[] calldata headerHashes) external {
         for (uint256 i = 0; i < headerHashes.length; i++) {
+            bytes32 headerHash = headerHashes[i];
             // Load submission from storage
-            HeaderSubmission memory headerSubmission = _headerSubmissions[headerHashes[i]];
+            HeaderSubmission memory headerSubmission = _headerSubmissions[headerHash];
             // Block must not be finalized yet
             require(headerSubmission.isNotFinalized);
 
@@ -177,17 +182,14 @@ contract Tendermint_ORU {
             require(block.number > SafeMath.add(headerSubmission.blockNumber, _fraudTimeout));
 
             // Reset unnecessary fields (to refund some gas)
-            address payable submitter = headerSubmission.submitter;
-            delete headerSubmission.submitter;
-            delete headerSubmission.blockNumber;
-            delete headerSubmission.prevHash;
-            delete headerSubmission.isNotFinalized;
-
-            // Write resets to storage
-            _headerSubmissions[headerHashes[i]] = headerSubmission;
+            delete _headerSubmissions[headerHash].submitter;
+            delete _headerSubmissions[headerHash].blockNumber;
+            delete _headerSubmissions[headerHash].prevHash;
+            delete _headerSubmissions[headerHash].commitHash;
+            delete _headerSubmissions[headerHash].isNotFinalized;
 
             // Return bond to submitter
-            submitter.transfer(_bondSize);
+            headerSubmission.submitter.transfer(_bondSize);
         }
     }
 

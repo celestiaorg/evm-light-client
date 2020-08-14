@@ -55,6 +55,9 @@ library Serializer {
     using Serializer for Commit;
     using Serializer for LightBlock;
 
+    // Each CommitSig is 105 bytes
+    uint256 constant COMMIT_SIG_BYTES = 105;
+
     function serialize(Header memory obj) internal pure returns (bytes memory) {
         return
             abi.encodePacked(
@@ -78,8 +81,17 @@ library Serializer {
     }
 
     function serialize(Commit memory obj) internal pure returns (bytes memory) {
-        // TODO serialize sigs
-        return abi.encodePacked(obj.height, obj.round, obj.blockID, obj.signaturesCount);
+        require(obj.signaturesCount == obj.signatures.length);
+
+        bytes memory sigs = new bytes(COMMIT_SIG_BYTES * obj.signaturesCount);
+        for (uint8 i = 0; i < obj.signaturesCount; i++) {
+            bytes memory packed = abi.encodePacked(obj.signatures[i].serialize());
+            for (uint8 j = 0; j < COMMIT_SIG_BYTES; j++) {
+                sigs[i * COMMIT_SIG_BYTES + j] = packed[j];
+            }
+        }
+
+        return abi.encodePacked(obj.height, obj.round, obj.blockID, obj.signaturesCount, sigs);
     }
 
     function serialize(LightBlock memory obj) internal pure returns (bytes memory) {

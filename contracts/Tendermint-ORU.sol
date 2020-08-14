@@ -55,7 +55,7 @@ struct Commit {
 }
 
 /// @notice Bare minimim block data. Only contains the block header and commit.
-struct BareBlock {
+struct LightBlock {
     Header header;
     Commit lastCommit;
 }
@@ -67,7 +67,7 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     event BlockSubmitted(
-        BareBlock bareBlock,
+        LightBlock lightBlock,
         bytes32 indexed headerHash,
         uint256 indexed height,
         HeaderSubmission headerSubmission
@@ -135,18 +135,18 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(BareBlock calldata bareBlock, bytes32 prevSubmissionHash) external payable {
+    function submitBlock(LightBlock calldata lightBlock, bytes32 prevSubmissionHash) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Previous block header hash must be the tip
-        require(bareBlock.header.lastBlockID == _tipHash);
+        require(lightBlock.header.lastBlockID == _tipHash);
         // Height must increment
         // Note: orphaned blocks be pruned before submitting new blocks since
         // this check does not account for forks.
-        require(bareBlock.header.height == SafeMath.add(_headerHeights[prevSubmissionHash], 1));
+        require(lightBlock.header.height == SafeMath.add(_headerHeights[prevSubmissionHash], 1));
 
         // Take simple hash of commit for previous block
-        bytes32 lastCommitHash = keccak256(abi.encode(bareBlock.lastCommit));
+        bytes32 lastCommitHash = keccak256(abi.encode(lightBlock.lastCommit));
 
         // TODO serialize header
         bytes memory serializedHeader;
@@ -156,18 +156,18 @@ contract Tendermint_ORU {
 
         // Insert header as new tip
         HeaderSubmission memory headerSubmission = HeaderSubmission(
-            bareBlock.header,
+            lightBlock.header,
             msg.sender,
             block.number,
             lastCommitHash
         );
         bytes32 headerSubmissionHash = keccak256(abi.encode(headerSubmission));
         _headerSubmissionHashes[headerHash] = headerSubmissionHash;
-        _headerHeights[headerSubmissionHash] = bareBlock.header.height;
+        _headerHeights[headerSubmissionHash] = lightBlock.header.height;
         _isNotFinalized[headerHash] = true;
         _tipHash = headerHash;
 
-        emit BlockSubmitted(bareBlock, headerHash, bareBlock.header.height, headerSubmission);
+        emit BlockSubmitted(lightBlock, headerHash, lightBlock.header.height, headerSubmission);
     }
 
     /// @notice Prove a block was invalid, reverting it and orphaning its descendents.

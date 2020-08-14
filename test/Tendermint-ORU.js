@@ -43,6 +43,7 @@ contract("Tendermint_ORU", async (accounts) => {
             height: 1,
             round: 0,
             blockID: EMPTY_HASH,
+            signaturesCount: 0,
             signatures: [],
           },
         },

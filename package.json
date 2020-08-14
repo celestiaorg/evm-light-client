@@ -13,11 +13,14 @@
     "truffle": "^5.1.39"
   },
   "devDependencies": {
+    "eslint": "^7.6.0",
+    "eslint-plugin-import": "^2.22.0",
     "prettier": "^2.0.5",
     "prettier-plugin-solidity": "^1.0.0-alpha.56"
   },
   "scripts": {
     "format": "prettier --write **/*.{js,sol}",
+    "lint": "eslint --ignore-path .gitignore .",
     "test": "mocha"
   },
   "repository": {

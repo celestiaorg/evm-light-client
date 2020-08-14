@@ -1,0 +1,33 @@
+{
+  "name": "evm-light-client",
+  "version": "0.0.0",
+  "description": "EVM-compatible on-chain light client for LazyLedger consensus",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.1.0",
+    "ganache-cli": "^6.10.1",
+    "ganache-core": "^2.11.2",
+    "truffle": "^5.1.39"
+  },
+  "devDependencies": {
+    "prettier": "^2.0.5",
+    "prettier-plugin-solidity": "^1.0.0-alpha.56"
+  },
+  "scripts": {
+    "format": "prettier --write **/*.sol",
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lazyledger/evm-light-client.git"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lazyledger/evm-light-client/issues"
+  },
+  "homepage": "https://github.com/lazyledger/evm-light-client#readme"
+}

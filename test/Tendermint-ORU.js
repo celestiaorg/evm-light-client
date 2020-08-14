@@ -3,11 +3,11 @@ const truffleAssert = require("truffle-assertions");
 const Tendermint_ORU = artifacts.require("Tendermint_ORU");
 
 contract("Tendermint_ORU", async (accounts) => {
-  it("should deploy", async () => {
+  it("[constructor] should deploy", async () => {
     const instance = await Tendermint_ORU.deployed();
   });
 
-  it("should set constructor parameters", async () => {
+  it("[constructor] should set constructor parameters", async () => {
     const instance = await Tendermint_ORU.deployed();
 
     const genesisHash = await instance._genesisHash.call();
@@ -20,7 +20,7 @@ contract("Tendermint_ORU", async (accounts) => {
     assert.equal(fraudTimeout, 0);
   });
 
-  it("should submit", async () => {
+  it("[submit] should submit", async () => {
     const instance = await Tendermint_ORU.deployed();
 
     await truffleAssert.fails(instance.submitBlock.call());

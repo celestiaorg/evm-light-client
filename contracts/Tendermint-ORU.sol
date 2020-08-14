@@ -20,6 +20,12 @@ struct HeaderSubmission {
 
 /// @title Optimistic rollup of a remote chain's Tendermint consensus.
 contract Tendermint_ORU {
+    using Serializer for Header;
+    using Serializer for Signature;
+    using Serializer for CommitSig;
+    using Serializer for Commit;
+    using Serializer for LightBlock;
+
     ////////////////////////////////////
     // Events
     ////////////////////////////////////
@@ -106,8 +112,8 @@ contract Tendermint_ORU {
         // Take simple hash of commit for previous block
         bytes32 lastCommitHash = keccak256(abi.encode(lightBlock.lastCommit));
 
-        // TODO serialize header
-        bytes memory serializedHeader;
+        // Serialize header
+        bytes memory serializedHeader = lightBlock.header.serialize();
 
         // Hash serialized header
         bytes32 headerHash = keccak256(serializedHeader);

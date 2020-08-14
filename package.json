@@ -17,7 +17,7 @@
     "prettier-plugin-solidity": "^1.0.0-alpha.56"
   },
   "scripts": {
-    "format": "prettier --write **/*.sol",
+    "format": "prettier --write **/*.{js,sol}",
     "test": "mocha"
   },
   "repository": {

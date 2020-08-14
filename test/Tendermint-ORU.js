@@ -1,3 +1,5 @@
+const truffleAssert = require("truffle-assertions");
+
 const Tendermint_ORU = artifacts.require("Tendermint_ORU");
 
 contract("Tendermint_ORU", async (accounts) => {
@@ -16,5 +18,11 @@ contract("Tendermint_ORU", async (accounts) => {
     assert.equal(bondSize, 0);
     const fraudTimeout = await instance._fraudTimeout.call();
     assert.equal(fraudTimeout, 0);
+  });
+
+  it("should submit", async () => {
+    const instance = await Tendermint_ORU.deployed();
+
+    await truffleAssert.fails(instance.submitBlock.call());
   });
 });

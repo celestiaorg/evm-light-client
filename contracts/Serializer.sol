@@ -48,6 +48,8 @@ struct LightBlock {
     Commit lastCommit;
 }
 
+/// @notice Basic packed encoding serializer.
+/// Uses abi.encodePacked format: https://solidity.readthedocs.io/en/v0.6.12/abi-spec.html#non-standard-packed-mode
 library Serializer {
     using Serializer for Header;
     using Serializer for Signature;

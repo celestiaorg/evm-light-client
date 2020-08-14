@@ -23,6 +23,28 @@ contract("Tendermint_ORU", async (accounts) => {
   it("[submit] should submit", async () => {
     const instance = await Tendermint_ORU.deployed();
 
-    await truffleAssert.fails(instance.submitBlock.call());
+    await truffleAssert.passes(
+      instance.submitBlock.call(
+        {
+          header: {
+            height: 0,
+            timestamp: 0,
+            lastBlockID: "",
+            lastCommitRoot: "",
+            consensusRoot: "",
+            stateCommitment: "",
+            availableDataRoot: "",
+            proposerAddress: "",
+          },
+          lastCommit: {
+            height: 0,
+            round: 0,
+            blockID: "",
+            signatures: [],
+          },
+        },
+        "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+      )
+    );
   });
 });

@@ -42,6 +42,7 @@ struct Commit {
 }
 
 /// @notice Bare minimim block data. Only contains the block header and commit.
+/// @dev https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#block
 struct LightBlock {
     Header header;
     Commit lastCommit;
@@ -53,10 +54,6 @@ library Serializer {
     using Serializer for CommitSig;
     using Serializer for Commit;
     using Serializer for LightBlock;
-
-    ////////////////////////////////////
-    // Objects
-    ////////////////////////////////////
 
     function serialize(Header memory obj) internal pure returns (bytes memory) {
         return

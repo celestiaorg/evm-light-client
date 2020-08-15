@@ -99,7 +99,7 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(LightBlock calldata lightBlock, bytes32 prevSubmissionHash) external payable {
+    function submitBlock(LightBlock memory lightBlock, bytes32 prevSubmissionHash) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Previous block header hash must be the tip
@@ -110,7 +110,7 @@ contract Tendermint_ORU {
         require(lightBlock.header.height == SafeMath.add(_headerHeights[prevSubmissionHash], 1));
 
         // Take simple hash of commit for previous block
-        bytes32 lastCommitHash = keccak256(abi.encode(lightBlock.lastCommit));
+        bytes32 lastCommitHash = keccak256(lightBlock.lastCommit.serialize());
 
         // Serialize header
         bytes memory serializedHeader = lightBlock.header.serialize();
@@ -139,7 +139,7 @@ contract Tendermint_ORU {
         bytes32 headerHash,
         HeaderSubmission calldata headerSubmission,
         HeaderSubmission calldata tipSubmission,
-        Commit calldata commit
+        Commit memory commit
     ) external {
         // Check submission against storage
         bytes32 headerSubmissionHash = keccak256(abi.encode(headerSubmission));

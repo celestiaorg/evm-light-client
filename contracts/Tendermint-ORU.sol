@@ -4,6 +4,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import "./Serializer.sol";
+
 /// @notice Submission of remote chain block header.
 struct HeaderSubmission {
     // Block header
@@ -16,52 +18,14 @@ struct HeaderSubmission {
     bytes32 lastCommitHash;
 }
 
-/// @notice Remote chain block header.
-/// @dev https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#header
-struct Header {
-    uint64 height;
-    uint64 timestamp;
-    bytes32 lastBlockID;
-    bytes32 lastCommitRoot;
-    bytes32 consensusRoot;
-    bytes32 stateCommitment;
-    bytes32 availableDataRoot;
-    bytes32 proposerAddress; // Note: this needs to be converted to a 20-byte address when used
-}
-
-/// @notice Compact ECDSA signature.
-/// @dev https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#signature
-struct Signature {
-    bytes32 r;
-    bytes32 vs;
-}
-
-/// @notice Tendermint signature.
-/// @dev https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#commitsig
-struct CommitSig {
-    uint8 blockIDFlag;
-    bytes32 validatorAddress; // Note: this needs to be converted to a 20-byte address when used
-    uint64 timestamp;
-    Signature signature;
-}
-
-/// @notice Tendermint commit (list of signatures).
-/// @dev https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#commit
-struct Commit {
-    uint64 height;
-    uint64 round;
-    uint64 blockID;
-    CommitSig[] signatures;
-}
-
-/// @notice Bare minimim block data. Only contains the block header and commit.
-struct LightBlock {
-    Header header;
-    Commit lastCommit;
-}
-
 /// @title Optimistic rollup of a remote chain's Tendermint consensus.
 contract Tendermint_ORU {
+    using Serializer for Header;
+    using Serializer for Signature;
+    using Serializer for CommitSig;
+    using Serializer for Commit;
+    using Serializer for LightBlock;
+
     ////////////////////////////////////
     // Events
     ////////////////////////////////////
@@ -135,7 +99,7 @@ contract Tendermint_ORU {
     ////////////////////////////////////
 
     /// @notice Submit a new bare block, placing a bond.
-    function submitBlock(LightBlock calldata lightBlock, bytes32 prevSubmissionHash) external payable {
+    function submitBlock(LightBlock memory lightBlock, bytes32 prevSubmissionHash) external payable {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Previous block header hash must be the tip
@@ -146,10 +110,10 @@ contract Tendermint_ORU {
         require(lightBlock.header.height == SafeMath.add(_headerHeights[prevSubmissionHash], 1));
 
         // Take simple hash of commit for previous block
-        bytes32 lastCommitHash = keccak256(abi.encode(lightBlock.lastCommit));
+        bytes32 lastCommitHash = keccak256(lightBlock.lastCommit.serialize());
 
-        // TODO serialize header
-        bytes memory serializedHeader;
+        // Serialize header
+        bytes memory serializedHeader = lightBlock.header.serialize();
 
         // Hash serialized header
         bytes32 headerHash = keccak256(serializedHeader);
@@ -175,7 +139,7 @@ contract Tendermint_ORU {
         bytes32 headerHash,
         HeaderSubmission calldata headerSubmission,
         HeaderSubmission calldata tipSubmission,
-        Commit calldata commit
+        Commit memory commit
     ) external {
         // Check submission against storage
         bytes32 headerSubmissionHash = keccak256(abi.encode(headerSubmission));

@@ -15,11 +15,11 @@ npm install
 Build:
 
 ```sh
-truffle compile
+npm run build
 ```
 
 Test:
 
 ```sh
-truffle test
+npm run test
 ```

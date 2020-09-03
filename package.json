@@ -1,5 +1,5 @@
 {
-  "name": "evm-light-client",
+  "name": "@lazyledger/evm-light-client",
   "version": "0.0.0",
   "description": "EVM-compatible on-chain light client for LazyLedger consensus",
   "main": "index.js",

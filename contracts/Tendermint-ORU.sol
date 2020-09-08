@@ -132,8 +132,8 @@ contract Tendermint_ORU {
     /// @notice Prove a block was invalid, reverting it and orphaning its descendents.
     function proveFraud(
         bytes32 headerHash,
-        HeaderSubmission calldata headerSubmission,
-        HeaderSubmission calldata tipSubmission,
+        HeaderSubmission memory headerSubmission,
+        HeaderSubmission memory tipSubmission,
         Commit memory commit
     ) external {
         // Check submission against storage
@@ -164,7 +164,7 @@ contract Tendermint_ORU {
     }
 
     /// @notice Finalize blocks, returning the bond to the submitter.
-    function finalizeBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {
+    function finalizeBlocks(bytes32[] memory headerHashes, HeaderSubmission[] memory headerSubmissions) external {
         for (uint256 i = 0; i < headerHashes.length; i++) {
             bytes32 headerHash = headerHashes[i];
             HeaderSubmission memory headerSubmission = headerSubmissions[i];
@@ -188,7 +188,7 @@ contract Tendermint_ORU {
 
     /// @notice Prune blocks orphaned in a reversion.
     /// @dev Orphaned blocks must be pruned before submitting new blocks.
-    function pruneBlocks(bytes32[] calldata headerHashes, HeaderSubmission[] calldata headerSubmissions) external {
+    function pruneBlocks(bytes32[] memory headerHashes, HeaderSubmission[] memory headerSubmissions) external {
         for (uint256 i = 0; i < headerHashes.length; i++) {
             bytes32 headerHash = headerHashes[i];
             HeaderSubmission memory headerSubmission = headerSubmissions[i];

@@ -3,8 +3,7 @@ pragma solidity >=0.6.0 <8.0.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-
-import "./Serializer.sol";
+import "./types.proto.sol";
 
 /// @notice Submission of remote chain block header.
 struct HeaderSubmission {
@@ -20,12 +19,6 @@ struct HeaderSubmission {
 
 /// @title Optimistic rollup of a remote chain's Tendermint consensus.
 contract Tendermint_ORU {
-    using Serializer for Header;
-    using Serializer for Signature;
-    using Serializer for CommitSig;
-    using Serializer for Commit;
-    using Serializer for LightBlock;
-
     ////////////////////////////////////
     // Events
     ////////////////////////////////////
@@ -103,17 +96,19 @@ contract Tendermint_ORU {
         // Must send _bondSize ETH to submit a block
         require(msg.value == _bondSize);
         // Previous block header hash must be the tip
-        require(lightBlock.header.lastBlockID == _tipHash);
+        // require(lightBlock.header.last_block_id == _tipHash);
         // Height must increment
         // Note: orphaned blocks be pruned before submitting new blocks since
         // this check does not account for forks.
         require(lightBlock.header.height == SafeMath.add(_headerHeights[prevSubmissionHash], 1));
 
         // Take simple hash of commit for previous block
-        bytes32 lastCommitHash = keccak256(lightBlock.lastCommit.serialize());
+        // bytes32 lastCommitHash = keccak256(lightBlock.lastCommit.serialize());
+        bytes32 lastCommitHash;
 
         // Serialize header
-        bytes memory serializedHeader = lightBlock.header.serialize();
+        // bytes memory serializedHeader = lightBlock.header.serialize();
+        bytes memory serializedHeader;
 
         // Hash serialized header
         bytes32 headerHash = keccak256(serializedHeader);
@@ -162,7 +157,7 @@ contract Tendermint_ORU {
         delete _headerHeights[headerSubmissionHash];
         delete _isNotFinalized[headerHash];
         // Roll back the tip
-        _tipHash = headerSubmission.header.lastBlockID;
+        // _tipHash = headerSubmission.header.lastBlockID;
 
         // Return half of bond to prover
         msg.sender.transfer(SafeMath.div(_bondSize, 2));
@@ -204,7 +199,7 @@ contract Tendermint_ORU {
             require(_isNotFinalized[headerHash]);
 
             // Previous block must be orphaned
-            require(_headerSubmissionHashes[headerSubmission.header.lastBlockID] == 0);
+            // require(_headerSubmissionHashes[headerSubmission.header.lastBlockID] == 0);
 
             // Reset storage
             delete _headerSubmissionHashes[headerHash];

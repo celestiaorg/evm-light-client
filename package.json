@@ -27,6 +27,7 @@
     "coverage": "truffle run coverage",
     "format": "prettier --write **/*.{js,sol}",
     "lint": "eslint --ignore-path .gitignore .",
+    "proto": "protoc --plugin protoc-gen-sol --sol_out license=Apache-2.0:contracts -I proto proto/*.proto",
     "test": "truffle test"
   },
   "repository": {

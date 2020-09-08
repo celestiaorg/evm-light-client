@@ -20,6 +20,11 @@ message Block {
   Commit last_commit = 4;
 }
 
+message LightBlock {
+  Header header = 1;
+  Commit last_commit = 2;
+}
+
 message Header {
   uint64 height = 1;
   uint64 timestamp = 2;
@@ -108,7 +113,7 @@ message Evidence {
 }
 
 message Vote {
-  VoteType type = 1;
+  VoteType vote_type = 1;
   uint64 height = 2;
   uint64 round = 3;
   HashDigest block_id = 4;

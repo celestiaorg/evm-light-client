@@ -88,8 +88,17 @@ module.exports = {
     // }
   },
 
+  plugins: ["solidity-coverage"],
+
   // Set default mocha options here, use special reporters etc.
   mocha: {
+    reporter: "eth-gas-reporter",
+    reporterOptions: {
+      currency: "USD",
+      gasPrice: 1,
+      onlyCalledMethods: false,
+      showTimeSpent: true,
+    },
     // timeout: 100000
   },
 
